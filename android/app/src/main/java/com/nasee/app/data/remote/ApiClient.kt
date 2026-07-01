@@ -70,7 +70,7 @@ class ApiClient(
     /**
      * 获取底层 OkHttpClient（供 ExoPlayer OkHttpDataSource 复用）。
      */
-    fun getOkHttpClient(): OkHttpClient = okHttpClient
+    fun okhttpClient(): OkHttpClient = okHttpClient
 
     companion object {
         /**
