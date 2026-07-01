@@ -51,11 +51,9 @@ fun PlayerScreen(
     onDisconnect: () -> Unit
 ) {
     val context = LocalContext.current
-    val viewModel: PlayerViewModel = viewModel(
-        factory = androidx.lifecycle.viewmodel.initializer {
-            PlayerViewModel(context.applicationContext as NASeeApplication)
-        }
-    )
+    val viewModel: PlayerViewModel = viewModel {
+        PlayerViewModel(context.applicationContext as NASeeApplication)
+    }
     val uiState by viewModel.uiState.collectAsState()
     val folders by viewModel.folders.collectAsState()
     val showFolderSheet by viewModel.showFolderSheet.collectAsState()

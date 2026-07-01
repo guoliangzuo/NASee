@@ -114,6 +114,7 @@ fun FolderBottomSheet(
 /**
  * 递归渲染文件夹树节点。
  */
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun FolderTreeItem(
     node: FolderNode,

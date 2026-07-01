@@ -63,16 +63,15 @@ import com.nasee.app.ui.viewmodel.LikedViewModel
  *
  * @param onBack 返回回调
  */
+@OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
 @Composable
 fun LikedVideosScreen(
     onBack: () -> Unit
 ) {
     val context = LocalContext.current
-    val viewModel: LikedViewModel = viewModel(
-        factory = androidx.lifecycle.viewmodel.initializer {
-            LikedViewModel(context.applicationContext as NASeeApplication)
-        }
-    )
+    val viewModel: LikedViewModel = viewModel {
+        LikedViewModel(context.applicationContext as NASeeApplication)
+    }
     val uiState by viewModel.uiState.collectAsState()
     val snackbarHostState = remember { SnackbarHostState() }
     val listState = rememberLazyListState()

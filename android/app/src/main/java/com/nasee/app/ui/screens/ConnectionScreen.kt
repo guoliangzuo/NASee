@@ -70,11 +70,9 @@ fun ConnectionScreen(
     onConnected: () -> Unit
 ) {
     val context = androidx.compose.ui.platform.LocalContext.current
-    val viewModel: ConnectionViewModel = viewModel(
-        factory = androidx.lifecycle.viewmodel.initializer {
-            ConnectionViewModel(context.applicationContext as NASeeApplication)
-        }
-    )
+    val viewModel: ConnectionViewModel = viewModel {
+        ConnectionViewModel(context.applicationContext as NASeeApplication)
+    }
     val uiState by viewModel.uiState.collectAsState()
     val keyboard = LocalSoftwareKeyboardController.current
 
