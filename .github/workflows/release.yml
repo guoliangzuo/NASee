@@ -78,9 +78,6 @@ jobs:
           distribution: 'temurin'
           java-version: '17'
 
-      - name: Setup Gradle
-        uses: gradle/actions/setup-gradle@v3
-
       - name: Make gradlew executable
         run: chmod +x android/gradlew
 
@@ -114,7 +111,7 @@ jobs:
           NASEE_KEYSTORE_PASSWORD: ${{ secrets.NASEE_KEYSTORE_PASSWORD || 'nasee123' }}
           NASEE_KEY_ALIAS: ${{ secrets.NASEE_KEY_ALIAS || 'nasee' }}
           NASEE_KEY_PASSWORD: ${{ secrets.NASEE_KEY_PASSWORD || 'nasee123' }}
-        run: ./gradlew assembleRelease --no-daemon --stacktrace
+        run: ./gradlew assembleRelease --no-daemon --stacktrace --no-build-cache
 
       - name: Generate checksums
         run: |
