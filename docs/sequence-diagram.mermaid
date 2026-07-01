@@ -1,0 +1,159 @@
+%% NASee 时序图 — 完整版
+
+%% ==================== 1. 视频扫描流程 ====================
+sequenceDiagram
+    autonumber
+    participant Main as main.go
+    participant Cfg as Config
+    participant DB as Database
+    participant Scan as Scanner
+    participant Worker as FFProbeWorker
+    participant Repo as VideoRepo
+    participant FS as Filesystem
+
+    Main->>Cfg: Load()
+    Cfg-->>Main: *Config{MediaDir, DataDir, ...}
+
+    Main->>DB: New(dataDir/nasee.db)
+    Main->>DB: Migrate()
+    DB-->>Main: tables created (videos, likes)
+
+    Main->>Scan: Start(ctx)
+    activate Scan
+
+    loop 扫描循环 (间隔 = ScanInterval)
+        Scan->>FS: filepath.Walk(MediaDir)
+        FS-->>Scan: 文件列表 (按扩展名过滤)
+
+        loop 每个视频文件
+            Scan->>Repo: check by FilePath + ModTime
+            alt 文件不存在 或 ModTime 已变
+                Scan->>Worker: Probe(filePath)
+                activate Worker
+                Worker->>Worker: semaphore.acquire (max 2)
+                Worker->>FS: exec ffprobe -v quiet -print_format json filePath
+                FS-->>Worker: JSON metadata {duration, width, height}
+                Worker->>Worker: timeout check (30s)
+                Worker-->>Scan: *VideoMeta
+                deactivate Worker
+                Scan->>Repo: Upsert(Video{FilePath, Title, Duration, ...})
+            else 文件已存在且未变
+                Note over Scan: 跳过 (增量扫描)
+            end
+        end
+
+        Scan->>Repo: MarkStale(scannedAt)
+        Note over Repo: 删除文件系统中已不存在的记录
+
+        Scan->>Scan: sleep(ScanInterval)
+    end
+
+    deactivate Scan
+
+%% ==================== 2. 客户端连接 + 获取列表 + 播放流程 ====================
+sequenceDiagram
+    autonumber
+    participant User as 用户
+    participant App as NASee App
+    participant CVM as ConnectionViewModel
+    participant ECS as EncryptedConfigStore
+    participant API as ApiService (Retrofit)
+    participant Server as NASee Server
+    participant PM as VideoPlayerManager
+    participant EP as ExoPlayer
+
+    Note over User,App: 首次打开 / 无已保存配置
+    User->>App: 打开 App
+    App->>CVM: loadSavedConfig()
+    CVM->>ECS: loadConfig()
+    ECS-->>CVM: null (首次使用)
+
+    User->>App: 输入 NAS 地址 + 密码
+    User->>App: 点击「测试连接」
+    App->>CVM: testConnection(address, password)
+    CVM->>API: GET /health (X-NASee-Key: password)
+    API->>Server: HTTP GET /health
+    Server-->>API: 200 OK {"status":"ok"}
+    API-->>CVM: success
+    CVM-->>App: 连接成功
+
+    User->>App: 点击「保存」
+    App->>CVM: saveConfig(config)
+    CVM->>ECS: saveConfig(ServerConfig{address, password})
+    Note over ECS: Android Keystore 加密存储
+
+    Note over App: 导航到 PlayerScreen
+    App->>API: GET /api/v1/videos?page=1&page_size=20&sort=mod_time&order=desc
+    API->>Server: HTTP GET (X-NASee-Key)
+    Server->>Server: VideoRepo.List(filter)
+    Server-->>API: 200 {videos:[...], total:150}
+    API-->>App: VideoListResponse
+
+    Note over App: 渲染 VerticalPager
+    App->>PM: getOrCreatePlayer(videos[0])
+    PM->>EP: new ExoPlayer()
+    PM->>EP: setMediaItem(baseUrl + streamUrl, headers{X-NASee-Key})
+    PM->>EP: prepare()
+    EP-->>PM: ready (buffering complete)
+    PM->>EP: play()
+    EP-->>User: 视频开始播放
+
+    Note over App: 预加载相邻视频
+    App->>PM: getOrCreatePlayer(videos[1])
+    PM->>EP: new ExoPlayer() + setMediaItem + prepare()
+
+    Note over User,App: 用户上滑切换视频
+    User->>App: 上滑 (VerticalPager settle)
+    App->>PM: 切换 currentPlayer → videos[1]
+    PM->>EP: play() (已预加载, 秒开)
+    EP-->>User: 立即播放 (< 500ms)
+
+    Note over App: 释放远端 Player, 预加载下一个
+    App->>PM: releasePlayer(videos[-1])
+    App->>PM: getOrCreatePlayer(videos[2]) + prepare()
+
+    Note over User,App: 滚动到底部加载更多
+    App->>API: GET /api/v1/videos?page=2&...
+    API->>Server: HTTP GET
+    Server-->>API: 200 {videos:[...]}
+    API-->>App: 追加到列表
+
+%% ==================== 3. 点赞流程 ====================
+sequenceDiagram
+    autonumber
+    participant User as 用户
+    participant UI as PlayerScreen UI
+    participant PVM as PlayerViewModel
+    participant API as ApiService (Retrofit)
+    participant Server as NASee Server
+    participant LH as LikeHandler
+    participant LR as LikeRepo
+    participant DB as SQLite
+
+    Note over User,UI: 方式1: 双击屏幕 (同时触发点赞)
+    Note over User,UI: 方式2: 点击右侧心形按钮
+
+    User->>UI: 双击屏幕 / 点击心形
+    UI->>UI: 播放点赞动画 (爱心粒子 + 按钮缩放)
+    UI->>PVM: toggleLike(video.id)
+
+    PVM->>PVM: optimistic update (liked = !liked)
+    Note over PVM: 先更新本地 UI 状态, 保证即时反馈
+
+    PVM->>API: POST /api/v1/videos/{id}/like (X-NASee-Key)
+    API->>Server: HTTP POST
+    Server->>LH: ToggleLike(videoID)
+    LH->>LR: ToggleLike(videoID)
+    LR->>DB: INSERT OR DELETE FROM likes
+    DB-->>LR: success
+    LR-->>LH: liked = true (或 false)
+    LH-->>Server: {video_id, liked}
+    Server-->>API: 200 {code:0, data:{video_id, liked}}
+    API-->>PVM: LikeResponse
+
+    alt 服务器返回与预期一致
+        PVM->>UI: 保持动画状态
+    else 服务器返回不一致 (如已被取消)
+        PVM->>UI: 回滚 UI 状态
+        UI->>User: 显示 toast "操作失败"
+    end

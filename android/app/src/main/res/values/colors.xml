@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- 主色调 -->
+    <color name="nasee_primary">#FF6C8EEF</color>
+    <color name="nasee_primary_variant">#FF4A6FCC</color>
+    <color name="nasee_secondary">#FFFF6B9D</color>
+    <color name="nasee_tertiary">#FF5AC8B0</color>
+
+    <!-- 背景色 -->
+    <color name="nasee_background">#FF0A0A0F</color>
+    <color name="nasee_surface">#FF1A1A24</color>
+    <color name="nasee_surface_variant">#FF2A2A35</color>
+
+    <!-- 文字色 -->
+    <color name="text_primary">#FFFFFFFF</color>
+    <color name="text_secondary">#B3FFFFFF</color>
+    <color name="text_tertiary">#73FFFFFF</color>
+
+    <!-- 半透明 -->
+    <color name="glass_white">#26FFFFFF</color>
+    <color name="glass_black">#4D000000</color>
+
+    <!-- 功能色 -->
+    <color name="error_red">#FFFF5252</color>
+    <color name="success_green">#FF4CAF50</color>
+    <color name="warning_amber">#FFFFC107</color>
+
+    <!-- 纯色 -->
+    <color name="black">#FF000000</color>
+    <color name="white">#FFFFFFFF</color>
+    <color name="transparent">#00000000</color>
+</resources>

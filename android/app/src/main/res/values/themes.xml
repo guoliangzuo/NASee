@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- NASee 主题 -->
+    <!-- 使用 Material3 深色主题作为基础，实际配色由 Compose Theme 控制 -->
+    <style name="Theme.NASee" parent="android:Theme.Material.NoActionBar">
+        <!-- 状态栏和导航栏透明 -->
+        <item name="android:statusBarColor">@android:color/transparent</item>
+        <item name="android:navigationBarColor">@android:color/transparent</item>
+        <!-- 沉浸式 -->
+        <item name="android:windowLightStatusBar">false</item>
+        <item name="android:windowLightNavigationBar">false</item>
+        <!-- 背景色 -->
+        <item name="android:windowBackground">@color/nasee_background</item>
+        <!-- 允许内容延伸到状态栏后 -->
+        <item name="android:windowDrawsSystemBarBackgrounds">true</item>
+        <!-- 无标题栏 -->
+        <item name="android:windowNoTitle">true</item>
+        <!-- 全屏 -->
+        <item name="android:windowFullscreen">false</item>
+        <!-- 动画 -->
+        <item name="android:windowAnimationStyle">@android:style/Animation.Activity</item>
+    </style>
+
+    <!-- 启动页主题（使用背景色避免白闪） -->
+    <style name="Theme.NASee.Splash" parent="Theme.NASee">
+        <item name="android:windowBackground">@color/nasee_background</item>
+    </style>
+</resources>

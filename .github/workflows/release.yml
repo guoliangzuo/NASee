@@ -1,0 +1,208 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+  packages: write
+
+jobs:
+  # ============================================================
+  # Job 1: 构建 Go 服务端 → Docker 镜像 → 推送到 GHCR（多架构）
+  # ============================================================
+  build-server:
+    name: Build & Push Server Docker Image
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.22'
+          cache: true
+          cache-dependency-path: server/go.sum
+
+      - name: Build server binary
+        working-directory: server
+        run: |
+          CGO_ENABLED=0 GOOS=linux go build -ldflags="-s -w" -o nasee-server ./cmd/nasee-server
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ghcr.io/${{ github.repository_owner }}/nasee-server
+          tags: |
+            type=raw,value=latest
+            type=ref,event=tag
+
+      - name: Set up QEMU (multi-arch)
+        uses: docker/setup-qemu-action@v3
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build and push Docker image (multi-arch)
+        uses: docker/build-push-action@v5
+        with:
+          context: ./server
+          push: true
+          platforms: linux/amd64,linux/arm64
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  # ============================================================
+  # Job 2: 构建 Android Release APK
+  # 如果未配置 keystore secret，自动生成一个（首次发布用）
+  # ============================================================
+  build-android:
+    name: Build Android APK
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v3
+
+      - name: Make gradlew executable
+        run: chmod +x android/gradlew
+
+      - name: Create keystore directory
+        run: mkdir -p android/keystore
+
+      - name: Decode release keystore (from secrets)
+        if: ${{ secrets.NASEE_KEYSTORE_BASE64 != '' }}
+        run: |
+          echo "${{ secrets.NASEE_KEYSTORE_BASE64 }}" | base64 -d > android/keystore/nasee-release.jks
+
+      - name: Auto-generate keystore (if no secret configured)
+        if: ${{ secrets.NASEE_KEYSTORE_BASE64 == '' }}
+        run: |
+          echo "⚠️  No NASEE_KEYSTORE_BASE64 secret found — auto-generating a release keystore."
+          echo "   For future upgrades, download this keystore and add it as a secret."
+          keytool -genkeypair \
+            -alias nasee \
+            -keyalg RSA \
+            -keysize 2048 \
+            -validity 10000 \
+            -keystore android/keystore/nasee-release.jks \
+            -storepass nasee123 \
+            -keypass nasee123 \
+            -dname "CN=NASee, OU=NASee, O=NASee, L=NA, ST=NA, C=CN"
+
+      - name: Build release APK
+        working-directory: android
+        env:
+          NASEE_KEYSTORE_PASSWORD: ${{ secrets.NASEE_KEYSTORE_PASSWORD || 'nasee123' }}
+          NASEE_KEY_ALIAS: ${{ secrets.NASEE_KEY_ALIAS || 'nasee' }}
+          NASEE_KEY_PASSWORD: ${{ secrets.NASEE_KEY_PASSWORD || 'nasee123' }}
+        run: ./gradlew assembleRelease --no-daemon --stacktrace
+
+      - name: Generate checksums
+        run: |
+          cd android/app/build/outputs/apk/release/
+          sha256sum *.apk > checksums.txt
+          cat checksums.txt
+
+      - name: Rename APK to friendly name
+        run: |
+          cd android/app/build/outputs/apk/release/
+          for f in *.apk; do
+            mv "$f" "NASee-android-release.apk"
+            break
+          done
+          ls -la
+
+      - name: Upload APK artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: apk-release
+          path: |
+            android/app/build/outputs/apk/release/*.apk
+            android/app/build/outputs/apk/release/checksums.txt
+          retention-days: 90
+
+      - name: Upload keystore artifact (for future upgrades)
+        if: ${{ secrets.NASEE_KEYSTORE_BASE64 == '' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: nasee-keystore
+          path: android/keystore/nasee-release.jks
+          retention-days: 90
+
+  # ============================================================
+  # Job 3: 创建 GitHub Release（APK + docker-compose + checksums）
+  # ============================================================
+  release:
+    name: Create GitHub Release
+    needs: [build-server, build-android]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download APK artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: apk-release
+          path: artifacts/
+
+      - name: Prepare release files
+        run: |
+          mkdir -p release-files
+          cp artifacts/*.apk release-files/ 2>/dev/null || true
+          cp artifacts/checksums.txt release-files/ 2>/dev/null || true
+          cp deploy/fnos/docker-compose.yml release-files/docker-compose.fnos.yml
+          ls -la release-files/
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          draft: false
+          generate_release_notes: true
+          body: |
+            ## NASee Release
+
+            ### 安装 APK
+            下载 `NASee-android-release.apk`，在 Android 12+ 设备上安装。
+
+            ### 飞牛 OS 一键部署
+            下载 `docker-compose.fnos.yml`，在飞牛 OS Docker 管理器中导入，修改三个参数：
+            - `NASEE_PASSWORD` — 访问密码
+            - 媒体目录挂载路径
+            - 数据目录挂载路径
+
+            ### Docker 命令行部署
+            ```bash
+            docker pull ghcr.io/${{ github.repository_owner }}/nasee-server:latest
+            docker run -d --name nasee \
+              -p 8080:8080 \
+              -e NASEE_PASSWORD=your-password \
+              -v /path/to/videos:/media:ro \
+              -v /path/to/data:/data \
+              --restart unless-stopped \
+              ghcr.io/${{ github.repository_owner }}/nasee-server:latest
+            ```
+
+            ### 校验文件
+            使用 `checksums.txt` 验证 APK 完整性。
+          files: |
+            release-files/*.apk
+            release-files/checksums.txt
+            release-files/docker-compose.fnos.yml

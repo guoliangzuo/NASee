@@ -1,0 +1,38 @@
+# NASee — Docker Compose deployment template for 飞牛 OS (fnOS)
+# =============================================================================
+# Quick start:
+#   1. Edit the environment variables and volume paths below.
+#   2. Run: docker compose up -d
+#   3. Access the API at http://<nas-ip>:8080/health
+# =============================================================================
+
+version: "3.8"
+
+services:
+  nasee:
+    # Use the pre-built image from GitHub Container Registry.
+    image: ghcr.io/<account>/nasee-server:latest
+    # To build locally instead, uncomment the next line:
+    # build: ./server
+    container_name: nasee
+    restart: unless-stopped
+    ports:
+      - "8080:8080"               # ← Customize: change left side for different host port
+    environment:
+      - NASEE_PORT=8080
+      - NASEE_MEDIA_DIR=/media     # Media directory path (inside container)
+      - NASEE_DATA_DIR=/data       # Data directory path (inside container, stores SQLite)
+      - NASEE_PASSWORD=changeme    # ← MUST CHANGE: access password
+      - NASEE_SCAN_INTERVAL=3600   # Scan interval in seconds (default: 1 hour)
+      # Optional overrides:
+      # - NASEE_FFPROBE_PATH=ffprobe
+      # - NASEE_FFPROBE_CONCURRENCY=2
+      # - NASEE_FFPROBE_TIMEOUT=30
+    volumes:
+      - /path/to/your/videos:/media:ro   # ← MUST CHANGE: mount your video directory (read-only)
+      - /path/to/data:/data               # ← MUST CHANGE: mount data directory (read-write, stores SQLite DB)
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3

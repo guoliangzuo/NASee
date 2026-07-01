@@ -1,0 +1,262 @@
+%% NASee 类图 — 服务端 + 客户端
+classDiagram
+    direction TB
+
+    %% ==================== 服务端 ====================
+    namespace Server {
+        class Config {
+            +string Port
+            +string MediaDir
+            +string DataDir
+            +string Password
+            +int ScanInterval
+            +string FFProbePath
+            +int FFProbeConcurrency
+            +int FFProbeTimeout
+            +Load() *Config
+        }
+
+        class Database {
+            -*sql.DB db
+            +New(dbPath string) *Database
+            +Close() error
+            +Migrate() error
+        }
+
+        class VideoRepo {
+            -db *sql.DB
+            +List(filter VideoFilter) ([]Video, int, error)
+            +GetByID(id int64) (*Video, error)
+            +Upsert(v *Video) error
+            +Delete(id int64) error
+            +DeleteByPath(path string) error
+            +GetFolders() ([]FolderNode, error)
+            +MarkStale(scannedAt int64) ([]int64, error)
+        }
+
+        class LikeRepo {
+            -db *sql.DB
+            +GetLikeStatus(videoID int64) (bool, error)
+            +ToggleLike(videoID int64) (bool, error)
+            +ListLiked(page int, pageSize int) ([]Video, int, error)
+        }
+
+        class Scanner {
+            -repo *VideoRepo
+            -worker *FFProbeWorker
+            -mediaDir string
+            +Start(ctx context.Context)
+            +ScanOnce() error
+            -walkDir(ctx) error
+        }
+
+        class FFProbeWorker {
+            -sem chan struct
+            -ffprobePath string
+            -timeout time.Duration
+            +Probe(filePath string) (*VideoMeta, error)
+        }
+
+        class Router {
+            +New(deps *Deps) http.Handler
+        }
+
+        class AuthMiddleware {
+            -password string
+            +Wrap(next http.Handler) http.Handler
+        }
+
+        class VideoHandler {
+            -repo *VideoRepo
+            +List(w http.ResponseWriter, r *http.Request)
+            +GetFolders(w, r)
+        }
+
+        class LikeHandler {
+            -repo *LikeRepo
+            +GetLike(w, r)
+            +ToggleLike(w, r)
+            +ListLiked(w, r)
+        }
+
+        class StreamHandler {
+            -mediaDir string
+            -repo *VideoRepo
+            +Stream(w, r)
+        }
+
+        class HealthHandler {
+            +Health(w, r)
+        }
+    }
+
+    %% ==================== 服务端数据模型 ====================
+    namespace ServerModels {
+        class Video {
+            +int64 ID
+            +string FilePath
+            +string Title
+            +float64 Duration
+            +int Width
+            +int Height
+            +int64 FileSize
+            +int64 ModTime
+            +string FolderPath
+            +int64 ScannedAt
+        }
+
+        class VideoMeta {
+            +float64 Duration
+            +int Width
+            +int Height
+            +int64 FileSize
+        }
+
+        class VideoFilter {
+            +int Page
+            +int PageSize
+            +string Folder
+            +string Sort
+            +string Order
+            +bool LikedOnly
+        }
+
+        class FolderNode {
+            +string Path
+            +string Name
+            +int Count
+            +[]FolderNode Children
+        }
+    }
+
+    %% ==================== 客户端 ====================
+    namespace Client {
+        class VideoDTO {
+            +Long id
+            +String title
+            +Double duration
+            +Long size
+            +String path
+            +String folder
+            +Int width
+            +Int height
+            +Boolean liked
+            +String streamUrl
+            +Long modTime
+        }
+
+        class VideoListResponse {
+            +List~VideoDTO~ videos
+            +Int total
+            +Int page
+            +Int pageSize
+        }
+
+        class FolderNodeDTO {
+            +String path
+            +String name
+            +Int count
+            +List~FolderNodeDTO~ children
+        }
+
+        class ServerConfig {
+            +String address
+            +String externalAddress
+            +String password
+        }
+
+        class ApiService {
+            <<interface>>
+            +getVideos(page, pageSize, folder, sort, order, likedOnly) Response~VideoListResponse~
+            +getFolders() Response~List~FolderNodeDTO~~
+            +getLikeStatus(videoId) Response~LikeResponse~
+            +toggleLike(videoId) Response~LikeResponse~
+            +getLikedVideos(page, pageSize) Response~VideoListResponse~
+            +triggerScan() Response~Unit~
+        }
+
+        class ApiClient {
+            -OkHttpClient client
+            +create(baseUrl, apiKey) ApiService
+        }
+
+        class AuthInterceptor {
+            -String apiKey
+            +intercept(chain InterceptorChain) Response
+        }
+
+        class EncryptedConfigStore {
+            -EncryptedSharedPreferences prefs
+            +saveConfig(config ServerConfig)
+            +loadConfig() ServerConfig?
+            +clearConfig()
+        }
+
+        class VideoPlayerManager {
+            -ExoPlayer currentPlayer
+            -Map~Long, ExoPlayer~ playerCache
+            +play(video VideoDTO)
+            +releasePlayer(videoId Long)
+            +releaseAll()
+            +seekTo(positionMs Long)
+            +togglePlayPause()
+            +getOrCreatePlayer(video VideoDTO) ExoPlayer
+        }
+
+        class PreloadManager {
+            -VideoPlayerManager playerManager
+            +preload(videos List~VideoDTO~, currentIndex Int)
+            +releaseDistant(currentIndex Int)
+        }
+
+        class PlayerViewModel {
+            -ApiService apiService
+            -VideoPlayerManager playerManager
+            -PreloadManager preloadManager
+            -MutableList~VideoDTO~ videos
+            +loadVideos(folder, sort, order, likedOnly)
+            +onPageChanged(index Int)
+            +toggleLike(videoId Long)
+            +onSeek(positionMs Long)
+            +loadMore()
+        }
+
+        class ConnectionViewModel {
+            -EncryptedConfigStore configStore
+            +testConnection(address, password) Result
+            +saveConfig(config ServerConfig)
+            +loadSavedConfig() ServerConfig?
+        }
+    }
+
+    %% ==================== 关系 ====================
+    Config --> Database : configures
+    Database --> VideoRepo : provides conn
+    Database --> LikeRepo : provides conn
+    Scanner --> VideoRepo : writes metadata
+    Scanner --> FFProbeWorker : delegates probing
+    FFProbeWorker ..> VideoMeta : produces
+    VideoRepo ..> Video : manages
+    VideoRepo ..> VideoFilter : uses
+    VideoRepo ..> FolderNode : returns
+    LikeRepo ..> Video : returns liked
+    Router --> AuthMiddleware : applies
+    Router --> VideoHandler : routes
+    Router --> LikeHandler : routes
+    Router --> StreamHandler : routes
+    Router --> HealthHandler : routes
+    VideoHandler --> VideoRepo : uses
+    LikeHandler --> LikeRepo : uses
+    StreamHandler --> VideoRepo : validates
+
+    ApiService <|.. ApiClient : implements
+    AuthInterceptor --> ApiClient : configures OkHttp
+    ApiClient ..> VideoListResponse : deserializes
+    ApiClient ..> FolderNodeDTO : deserializes
+    PlayerViewModel --> ApiService : calls
+    PlayerViewModel --> VideoPlayerManager : manages playback
+    PlayerViewModel --> PreloadManager : coordinates preload
+    PreloadManager --> VideoPlayerManager : delegates
+    ConnectionViewModel --> EncryptedConfigStore : reads/writes
+    EncryptedConfigStore ..> ServerConfig : stores
+    VideoPlayerManager ..> VideoDTO : plays from streamUrl
