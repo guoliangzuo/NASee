@@ -13,11 +13,11 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 
 /**
- * 点赞列表 ViewModel。
+ * 收藏列表 ViewModel。
  *
  * 职责：
- * - 分页加载点赞视频列表
- * - 取消点赞并刷新列表
+ * - 分页加载收藏视频列表
+ * - 取消收藏并刷新列表
  */
 class LikedViewModel(application: Application) : AndroidViewModel(application) {
 
@@ -34,13 +34,13 @@ class LikedViewModel(application: Application) : AndroidViewModel(application) {
     val uiState: StateFlow<LikedUiState> = _uiState.asStateFlow()
 
     init {
-        loadLikedVideos()
+        loadFavoritedVideos()
     }
 
     /**
-     * 加载点赞视频列表（第一页）。
+     * 加载收藏视频列表（第一页）。
      */
-    fun loadLikedVideos() {
+    fun loadFavoritedVideos() {
         viewModelScope.launch {
             _uiState.value = _uiState.value.copy(isLoading = true, error = null)
             try {
@@ -62,13 +62,13 @@ class LikedViewModel(application: Application) : AndroidViewModel(application) {
                     )
                 }
             } catch (e: ApiException) {
-                Log.e(TAG, "Load liked videos failed (API)", e)
+                Log.e(TAG, "Load favorited videos failed (API)", e)
                 _uiState.value = _uiState.value.copy(
                     isLoading = false,
                     error = if (e.errorCode == 401) "认证失败，请重新连接" else "加载失败：${e.message}"
                 )
             } catch (e: Exception) {
-                Log.e(TAG, "Load liked videos failed", e)
+                Log.e(TAG, "Load favorited videos failed", e)
                 _uiState.value = _uiState.value.copy(
                     isLoading = false,
                     error = "网络错误：${e.localizedMessage ?: "未知错误"}"
@@ -102,18 +102,18 @@ class LikedViewModel(application: Application) : AndroidViewModel(application) {
                     _uiState.value = _uiState.value.copy(isLoadingMore = false)
                 }
             } catch (e: Exception) {
-                Log.e(TAG, "Load more liked videos failed", e)
+                Log.e(TAG, "Load more favorited videos failed", e)
                 _uiState.value = _uiState.value.copy(isLoadingMore = false)
             }
         }
     }
 
     /**
-     * 取消点赞（optimistic update + 回滚）。
+     * 取消收藏（optimistic update + 回滚）。
      *
      * @param videoId 视频 ID
      */
-    fun unlike(videoId: Long) {
+    fun unfavorite(videoId: Long) {
         val previousVideos = _uiState.value.videos
         // Optimistic update: 立即移除
         _uiState.value = _uiState.value.copy(
@@ -130,16 +130,16 @@ class LikedViewModel(application: Application) : AndroidViewModel(application) {
                     _uiState.value = _uiState.value.copy(
                         videos = previousVideos,
                         total = previousVideos.size,
-                        error = "取消点赞失败"
+                        error = "取消收藏失败"
                     )
                 }
             } catch (e: Exception) {
-                Log.e(TAG, "Unlike failed", e)
+                Log.e(TAG, "Unfavorite failed", e)
                 // 回滚
                 _uiState.value = _uiState.value.copy(
                     videos = previousVideos,
                     total = previousVideos.size,
-                    error = "网络错误，取消点赞失败"
+                    error = "网络错误，取消收藏失败"
                 )
             }
         }
@@ -152,7 +152,7 @@ class LikedViewModel(application: Application) : AndroidViewModel(application) {
 }
 
 /**
- * 点赞列表 UI 状态。
+ * 收藏列表 UI 状态。
  */
 data class LikedUiState(
     val videos: List<Video> = emptyList(),

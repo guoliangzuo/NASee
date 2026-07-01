@@ -24,6 +24,8 @@ import kotlinx.coroutines.launch
  * - 测试服务端连接（调用 /health）
  * - 保存配置到加密存储
  * - 初始化 ApiService 并更新 DI 容器
+ *
+ * 仅支持局域网连接，已移除外网连接相关功能。
  */
 class ConnectionViewModel(application: Application) : AndroidViewModel(application) {
 
@@ -51,7 +53,6 @@ class ConnectionViewModel(application: Application) : AndroidViewModel(applicati
             if (config != null) {
                 _uiState.value = _uiState.value.copy(
                     address = config.address,
-                    externalAddress = config.externalAddress ?: "",
                     password = config.password,
                     hasSavedConfig = true
                 )
@@ -64,13 +65,6 @@ class ConnectionViewModel(application: Application) : AndroidViewModel(applicati
      */
     fun updateAddress(address: String) {
         _uiState.value = _uiState.value.copy(address = address)
-    }
-
-    /**
-     * 更新外网地址输入。
-     */
-    fun updateExternalAddress(address: String) {
-        _uiState.value = _uiState.value.copy(externalAddress = address)
     }
 
     /**
@@ -158,7 +152,6 @@ class ConnectionViewModel(application: Application) : AndroidViewModel(applicati
         viewModelScope.launch {
             val config = ServerConfig(
                 address = state.address.trim(),
-                externalAddress = state.externalAddress.trim().ifBlank { null },
                 password = state.password
             )
 
@@ -188,8 +181,6 @@ class ConnectionViewModel(application: Application) : AndroidViewModel(applicati
 data class ConnectionUiState(
     /** 服务端地址 */
     val address: String = "",
-    /** 外网地址（可选） */
-    val externalAddress: String = "",
     /** 密码 */
     val password: String = "",
     /** 是否正在测试连接 */

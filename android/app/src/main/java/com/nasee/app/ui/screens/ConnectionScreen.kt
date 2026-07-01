@@ -1,5 +1,9 @@
 package com.nasee.app.ui.screens
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -18,7 +22,6 @@ import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Lock
-import androidx.compose.material.icons.filled.Public
 import androidx.compose.material.icons.filled.Router
 import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material.icons.filled.VisibilityOff
@@ -41,6 +44,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
@@ -53,15 +57,16 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.nasee.app.NASeeApplication
 import com.nasee.app.ui.components.LiquidGlassCard
-import com.nasee.app.ui.theme.NASeePrimary
-import com.nasee.app.ui.theme.NASeeSecondary
+import com.nasee.app.ui.theme.MacaronYellow
+import com.nasee.app.ui.theme.MacaronYellowLight
 import com.nasee.app.ui.viewmodel.ConnectionViewModel
 
 /**
  * 连接设置页。
  *
- * 用户输入服务端地址和密码，测试连接后保存配置。
- * 液态玻璃卡片背景 + 渐变遮罩。
+ * 用户输入局域网服务端地址和密码，测试连接后保存配置。
+ * 仅支持局域网连接，已移除外网连接相关功能。
+ * 液态玻璃卡片背景 + 渐变遮罩 + 优雅的动画效果。
  *
  * @param onConnected 连接成功回调
  */
@@ -105,14 +110,15 @@ fun ConnectionScreen(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center
         ) {
-            // Logo 区域
+            // Logo 区域（带阴影和动画）
             Box(
                 modifier = Modifier
-                    .size(80.dp)
+                    .size(90.dp)
+                    .shadow(16.dp, CircleShape)
                     .clip(CircleShape)
                     .background(
                         Brush.radialGradient(
-                            colors = listOf(NASeePrimary, NASeeSecondary)
+                            colors = listOf(MacaronYellowLight, MacaronYellow)
                         )
                     ),
                 contentAlignment = Alignment.Center
@@ -120,25 +126,25 @@ fun ConnectionScreen(
                 Icon(
                     imageVector = Icons.Default.Router,
                     contentDescription = "NASee",
-                    tint = Color.White,
-                    modifier = Modifier.size(40.dp)
+                    tint = Color.Black.copy(alpha = 0.8f),
+                    modifier = Modifier.size(45.dp)
                 )
             }
 
-            Spacer(modifier = Modifier.height(16.dp))
+            Spacer(modifier = Modifier.height(20.dp))
             Text(
                 text = "NASee",
-                color = Color.White,
-                fontSize = 28.sp,
+                color = MacaronYellow,
+                fontSize = 32.sp,
                 fontWeight = androidx.compose.ui.text.font.FontWeight.Bold
             )
             Text(
-                text = "连接到你的视频库",
+                text = "连接到你的局域网视频库",
                 color = Color.White.copy(alpha = 0.6f),
                 fontSize = 14.sp
             )
 
-            Spacer(modifier = Modifier.height(32.dp))
+            Spacer(modifier = Modifier.height(36.dp))
 
             // 液态玻璃表单卡片
             LiquidGlassCard {
@@ -146,29 +152,19 @@ fun ConnectionScreen(
                     modifier = Modifier.padding(24.dp),
                     verticalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
-                    // 服务端地址
+                    // 局域网地址
                     OutlinedTextField(
                         value = uiState.address,
                         onValueChange = viewModel::updateAddress,
-                        label = { Text("服务端地址") },
+                        label = { Text("局域网地址") },
                         placeholder = { Text("http://192.168.1.100:8080") },
-                        leadingIcon = { Icon(Icons.Default.Router, contentDescription = null) },
-                        singleLine = true,
-                        keyboardOptions = KeyboardOptions(
-                            keyboardType = KeyboardType.Uri,
-                            imeAction = ImeAction.Next
-                        ),
-                        colors = glassTextFieldColors(),
-                        modifier = Modifier.fillMaxWidth()
-                    )
-
-                    // 外网地址（可选）
-                    OutlinedTextField(
-                        value = uiState.externalAddress,
-                        onValueChange = viewModel::updateExternalAddress,
-                        label = { Text("外网地址（可选）") },
-                        placeholder = { Text("FN Connect 外网地址") },
-                        leadingIcon = { Icon(Icons.Default.Public, contentDescription = null) },
+                        leadingIcon = { 
+                            Icon(
+                                Icons.Default.Router, 
+                                contentDescription = null,
+                                tint = MacaronYellow
+                            ) 
+                        },
                         singleLine = true,
                         keyboardOptions = KeyboardOptions(
                             keyboardType = KeyboardType.Uri,
@@ -184,12 +180,19 @@ fun ConnectionScreen(
                         value = uiState.password,
                         onValueChange = viewModel::updatePassword,
                         label = { Text("访问密码") },
-                        leadingIcon = { Icon(Icons.Default.Lock, contentDescription = null) },
+                        leadingIcon = { 
+                            Icon(
+                                Icons.Default.Lock, 
+                                contentDescription = null,
+                                tint = MacaronYellow
+                            ) 
+                        },
                         trailingIcon = {
                             IconButton(onClick = { showPassword = !showPassword }) {
                                 Icon(
                                     imageVector = if (showPassword) Icons.Default.VisibilityOff else Icons.Default.Visibility,
-                                    contentDescription = if (showPassword) "隐藏密码" else "显示密码"
+                                    contentDescription = if (showPassword) "隐藏密码" else "显示密码",
+                                    tint = MacaronYellow
                                 )
                             }
                         },
@@ -219,8 +222,12 @@ fun ConnectionScreen(
                         )
                     }
 
-                    // 连接成功提示
-                    if (uiState.isConnectionSuccess) {
+                    // 连接成功提示（带动画）
+                    AnimatedVisibility(
+                        visible = uiState.isConnectionSuccess,
+                        enter = fadeIn() + slideInVertically(),
+                        exit = fadeOut()
+                    ) {
                         Text(
                             text = "✓ 连接测试成功",
                             color = Color(0xFF4CAF50),
@@ -239,18 +246,18 @@ fun ConnectionScreen(
                         },
                         enabled = !uiState.isTesting,
                         colors = ButtonDefaults.buttonColors(
-                            containerColor = NASeePrimary
+                            containerColor = MacaronYellow
                         ),
                         modifier = Modifier.fillMaxWidth()
                     ) {
                         if (uiState.isTesting) {
                             CircularProgressIndicator(
                                 modifier = Modifier.size(20.dp),
-                                color = Color.White,
+                                color = Color.Black,
                                 strokeWidth = 2.dp
                             )
                         } else {
-                            Text("测试连接")
+                            Text("测试连接", color = Color.Black)
                         }
                     }
 
@@ -263,7 +270,7 @@ fun ConnectionScreen(
                         enabled = !uiState.isTesting,
                         modifier = Modifier.fillMaxWidth(),
                         colors = ButtonDefaults.outlinedButtonColors(
-                            contentColor = Color.White
+                            contentColor = MacaronYellow
                         )
                     ) {
                         Text(if (uiState.hasSavedConfig) "保存并进入" else "连接")
@@ -283,13 +290,13 @@ private fun glassTextFieldColors() = TextFieldDefaults.colors(
     unfocusedTextColor = Color.White,
     focusedContainerColor = Color.White.copy(alpha = 0.08f),
     unfocusedContainerColor = Color.White.copy(alpha = 0.05f),
-    cursorColor = NASeePrimary,
-    focusedIndicatorColor = NASeePrimary,
+    cursorColor = MacaronYellow,
+    focusedIndicatorColor = MacaronYellow,
     unfocusedIndicatorColor = Color.White.copy(alpha = 0.3f),
-    focusedLabelColor = NASeePrimary,
+    focusedLabelColor = MacaronYellow,
     unfocusedLabelColor = Color.White.copy(alpha = 0.6f),
-    focusedLeadingIconColor = NASeePrimary,
+    focusedLeadingIconColor = MacaronYellow,
     unfocusedLeadingIconColor = Color.White.copy(alpha = 0.5f),
-    focusedTrailingIconColor = NASeePrimary,
+    focusedTrailingIconColor = MacaronYellow,
     unfocusedTrailingIconColor = Color.White.copy(alpha = 0.5f)
 )

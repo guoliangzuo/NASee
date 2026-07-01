@@ -173,7 +173,7 @@ fun LikedVideosScreen(
                     items(uiState.videos, key = { it.id }) { video ->
                         LikedVideoItem(
                             video = video,
-                            onUnlike = { viewModel.unlike(video.id) }
+                            onUnfavorite = { viewModel.unfavorite(video.id) }
                         )
                     }
 
@@ -200,12 +200,12 @@ fun LikedVideosScreen(
 }
 
 /**
- * 单个点赞视频项。
+ * 单个收藏视频项。
  */
 @Composable
 private fun LikedVideoItem(
     video: Video,
-    onUnlike: () -> Unit
+    onUnfavorite: () -> Unit
 ) {
     Row(
         modifier = Modifier
@@ -253,8 +253,8 @@ private fun LikedVideoItem(
 
         Spacer(modifier = Modifier.width(8.dp))
 
-        // 取消点赞按钮
-        IconButton(onClick = onUnlike) {
+        // 取消收藏按钮
+        IconButton(onClick = onUnfavorite) {
             Icon(
                 imageVector = Icons.Default.Favorite,
                 contentDescription = "取消收藏",

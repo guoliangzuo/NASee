@@ -12,10 +12,7 @@ import androidx.compose.material.icons.outlined.FavoriteBorder
 import androidx.compose.material3.Icon
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.scale
@@ -25,29 +22,31 @@ import kotlinx.coroutines.delay
 import kotlin.random.Random
 
 /**
- * 点赞按钮。
+ * 收藏按钮。
  *
  * 特性：
- * - 心形图标，点赞时缩放弹跳动画
- * - 点赞时触发爱心粒子飘散效果（Canvas 绘制）
- * - 已点赞/未点赞状态切换
+ * - 心形图标，收藏时缩放弹跳动画
+ * - 收藏时触发爱心粒子飘散效果（Canvas 绘制）
+ * - 已收藏/未收藏状态切换
  *
- * @param isLiked 是否已点赞
+ * 已移除"点赞"功能，仅保留"收藏"。
+ *
+ * @param isFavorited 是否已收藏
  * @param onClick 点击回调
  * @param modifier 修饰符
  */
 @Composable
-fun LikeButton(
-    isLiked: Boolean,
+fun FavoriteButton(
+    isFavorited: Boolean,
     onClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     val scaleAnim = remember { Animatable(1f) }
     val particles = remember { mutableStateListOf<HeartParticle>() }
 
-    // 点赞时触发弹跳动画
-    LaunchedEffect(isLiked) {
-        if (isLiked) {
+    // 收藏时触发弹跳动画
+    LaunchedEffect(isFavorited) {
+        if (isFavorited) {
             scaleAnim.animateTo(
                 targetValue = 1.3f,
                 animationSpec = spring(
@@ -97,9 +96,9 @@ fun LikeButton(
 
         // 心形图标
         Icon(
-            imageVector = if (isLiked) Icons.Default.Favorite else Icons.Outlined.FavoriteBorder,
-            contentDescription = if (isLiked) "取消点赞" else "点赞",
-            tint = if (isLiked) Color(0xFFFF6B9D) else Color.White,
+            imageVector = if (isFavorited) Icons.Default.Favorite else Icons.Outlined.FavoriteBorder,
+            contentDescription = if (isFavorited) "取消收藏" else "收藏",
+            tint = if (isFavorited) Color(0xFFFF6B9D) else Color.White,
             modifier = Modifier
                 .size(32.dp)
                 .scale(scaleAnim.value)

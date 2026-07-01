@@ -6,8 +6,6 @@
 #   3. Access the API at http://<nas-ip>:8080/health
 # =============================================================================
 
-version: "3.8"
-
 services:
   nasee:
     # Use the pre-built image from GitHub Container Registry.

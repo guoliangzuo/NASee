@@ -17,7 +17,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
-import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.media3.common.Player
 import androidx.media3.common.util.UnstableApi
 import com.nasee.app.NASeeApplication
@@ -37,11 +39,15 @@ import kotlinx.coroutines.delay
  * 1. VideoPager —— 视频播放器 + 竖屏滑动
  * 2. 半透明渐变遮罩 —— 底部信息可读性
  * 3. VideoInfoBar —— 底部标题/路径信息
- * 4. SideActionRail —— 右侧操作栏
+ * 4. SideActionRail —— 右侧操作栏（收藏、文件夹、排序等）
  * 5. ProgressBar —— 底部进度条
  * 6. SnackbarHost —— 错误提示
  *
- * @param onNavigateToLiked 导航到点赞列表
+ * 生命周期监听：
+ * - 当 App 进入后台时立即暂停播放
+ * - 当 App 回到前台时不自动恢复播放
+ *
+ * @param onNavigateToLiked 导航到收藏列表
  * @param onDisconnect 断开连接
  */
 @UnstableApi
@@ -61,6 +67,24 @@ fun PlayerScreen(
     val currentPosition by viewModel.currentPosition.collectAsState()
     val totalDuration by viewModel.totalDuration.collectAsState()
     val snackbarHostState = remember { SnackbarHostState() }
+
+    // 生命周期监听：暂停播放
+    val lifecycleOwner = LocalLifecycleOwner.current
+    LaunchedEffect(lifecycleOwner) {
+        val observer = LifecycleEventObserver { _, event ->
+            when (event) {
+                Lifecycle.Event.ON_PAUSE -> {
+                    // App 进入后台，立即暂停播放
+                    viewModel.pauseCurrentPlayer()
+                }
+                Lifecycle.Event.ON_RESUME -> {
+                    // App 回到前台，不自动恢复播放（让用户手动点击）
+                }
+                else -> {}
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+    }
 
     // 初始加载
     LaunchedEffect(Unit) {
@@ -119,7 +143,7 @@ fun PlayerScreen(
                 val player = viewModel.getCurrentPlayer()
                 player?.seekTo((player.currentPosition + 10_000).coerceAtMost(player.duration))
             },
-            onDoubleTapCenter = { viewModel.doubleTapLike() },
+            onDoubleTapCenter = { viewModel.doubleTapFavorite() },
             modifier = Modifier.fillMaxSize()
         )
 
@@ -151,12 +175,12 @@ fun PlayerScreen(
 
         // 4. 右侧操作栏
         SideActionRail(
-            isLiked = uiState.isLiked,
-            likedCount = uiState.total,
-            onLikeClick = { viewModel.toggleLike() },
+            isFavorited = uiState.isFavorited,
+            favoritedCount = uiState.total,
+            onFavoriteClick = { viewModel.toggleFavorite() },
             onFolderClick = { viewModel.showFolderSheet(true) },
             onSortClick = { viewModel.showSortMenu(true) },
-            onLikedVideosClick = onNavigateToLiked,
+            onFavoritedVideosClick = onNavigateToLiked,
             onDisconnect = onDisconnect,
             modifier = Modifier
                 .align(Alignment.CenterEnd)

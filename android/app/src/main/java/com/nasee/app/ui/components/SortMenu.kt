@@ -8,9 +8,9 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowDownward
 import androidx.compose.material.icons.filled.ArrowUpward
-import androidx.compose.material.icons.filled.Schedule
+import androidx.compose.material.icons.filled.Shuffle
+import androidx.compose.material.icons.filled.SortByAlpha
 import androidx.compose.material.icons.filled.Straighten
-import androidx.compose.material.icons.filled.TextFields
 import androidx.compose.material.icons.outlined.Storage
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
@@ -23,13 +23,14 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import com.nasee.app.ui.theme.NASeePrimary
+import com.nasee.app.ui.theme.MacaronYellow
 
 /**
  * 排序下拉菜单。
  *
- * 排序选项：名称 / 修改时间 / 文件大小 / 时长
- * 每项可切换升降序。
+ * 排序选项：名称 / 文件大小 / 时长 / 乱序（随机）
+ * 已移除"修改时间"选项
+ * 每项可切换升降序（乱序除外）。
  *
  * @param currentSort 当前排序字段
  * @param currentOrder 当前排序方向
@@ -44,10 +45,10 @@ fun SortMenu(
     onDismiss: () -> Unit
 ) {
     val sortOptions = listOf(
-        SortOption("name", "名称", Icons.Default.TextFields),
-        SortOption("mod_time", "修改时间", Icons.Default.Schedule),
+        SortOption("name", "名称", Icons.Default.SortByAlpha),
         SortOption("file_size", "文件大小", Icons.Outlined.Storage),
-        SortOption("duration", "时长", Icons.Default.Straighten)
+        SortOption("duration", "时长", Icons.Default.Straighten),
+        SortOption("shuffle", "乱序", Icons.Default.Shuffle, isShuffle = true)
     )
 
     DropdownMenu(
@@ -63,44 +64,65 @@ fun SortMenu(
         )
 
         sortOptions.forEach { option ->
-            val isSelected = currentSort == option.field
-            val newOrder = if (isSelected && currentOrder == "desc") "asc" else "desc"
-
-            DropdownMenuItem(
-                text = {
-                    Column {
+            if (option.isShuffle) {
+                // 乱序选项（不需要切换升降序）
+                DropdownMenuItem(
+                    text = {
                         Text(
                             text = option.label,
-                            color = if (isSelected) NASeePrimary else MaterialTheme.colorScheme.onSurface,
-                            fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Normal
+                            color = if (currentSort == option.field) MacaronYellow else MaterialTheme.colorScheme.onSurface,
+                            fontWeight = if (currentSort == option.field) FontWeight.SemiBold else FontWeight.Normal
                         )
-                        if (isSelected) {
+                    },
+                    leadingIcon = {
+                        Icon(
+                            imageVector = option.icon,
+                            contentDescription = null,
+                            tint = if (currentSort == option.field) MacaronYellow else MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    },
+                    onClick = { onSortSelected(option.field, "asc") }
+                )
+            } else {
+                val isSelected = currentSort == option.field
+                val newOrder = if (isSelected && currentOrder == "desc") "asc" else "desc"
+
+                DropdownMenuItem(
+                    text = {
+                        Column {
                             Text(
-                                text = if (currentOrder == "desc") "降序 ↓" else "升序 ↑",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = NASeePrimary
+                                text = option.label,
+                                color = if (isSelected) MacaronYellow else MaterialTheme.colorScheme.onSurface,
+                                fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Normal
+                            )
+                            if (isSelected) {
+                                Text(
+                                    text = if (currentOrder == "desc") "降序 ↓" else "升序 ↑",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MacaronYellow
+                                )
+                            }
+                        }
+                    },
+                    leadingIcon = {
+                        Icon(
+                            imageVector = option.icon,
+                            contentDescription = null,
+                            tint = if (isSelected) MacaronYellow else MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    },
+                    trailingIcon = {
+                        if (isSelected) {
+                            Icon(
+                                imageVector = if (currentOrder == "desc") Icons.Default.ArrowDownward else Icons.Default.ArrowUpward,
+                                contentDescription = null,
+                                tint = MacaronYellow
                             )
                         }
-                    }
-                },
-                leadingIcon = {
-                    Icon(
-                        imageVector = option.icon,
-                        contentDescription = null,
-                        tint = if (isSelected) NASeePrimary else MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                },
-                trailingIcon = {
-                    if (isSelected) {
-                        Icon(
-                            imageVector = if (currentOrder == "desc") Icons.Default.ArrowDownward else Icons.Default.ArrowUpward,
-                            contentDescription = null,
-                            tint = NASeePrimary
-                        )
-                    }
-                },
-                onClick = { onSortSelected(option.field, newOrder) }
-            )
+                    },
+                    onClick = { onSortSelected(option.field, newOrder) }
+                )
+            }
         }
     }
 }
@@ -109,5 +131,6 @@ fun SortMenu(
 private data class SortOption(
     val field: String,
     val label: String,
-    val icon: ImageVector
+    val icon: ImageVector,
+    val isShuffle: Boolean = false
 )

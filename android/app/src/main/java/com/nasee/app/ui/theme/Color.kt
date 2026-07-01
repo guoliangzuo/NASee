@@ -3,16 +3,16 @@ package com.nasee.app.ui.theme
 import androidx.compose.ui.graphics.Color
 
 // ============================================================
-// NASee 液态玻璃配色方案
+// NASee 黄色马卡龙配色方案
 // ============================================================
-// 设计理念：深色背景 + 半透明叠加层 + 柔和强调色
-// 营造类似 iOS 液态玻璃（Liquid Glass）的视觉风格
+// 设计理念：深色背景 + 黄色马卡龙强调色 + 半透明叠加层
+// 参考抖音风格，但更加优雅和温暖
 // ============================================================
 
-// --- 主色调 ---
-val NASeePrimary = Color(0xFF6C8EEF)       // 柔和蓝
-val NASeePrimaryVariant = Color(0xFF4A6FCC) // 深蓝
-val NASeeSecondary = Color(0xFFFF6B9D)      // 粉色（点赞/强调）
+// --- 主色调（黄色马卡龙色系）---
+val NASeePrimary = Color(0xFFFFD700)       // 温暖黄色（马卡龙黄）
+val NASeePrimaryVariant = Color(0xFFFFC107) // 深黄
+val NASeeSecondary = Color(0xFFFF6B9D)      // 粉色（收藏/强调）
 val NASeeTertiary = Color(0xFF5AC8B0)       // 青绿（辅助）
 
 // --- 背景色 ---
@@ -39,3 +39,9 @@ val WarningAmber = Color(0xFFFFC107)
 // --- 渐变 ---
 val GradientTop = Color.Black.copy(alpha = 0.6f)
 val GradientBottom = Color.Black.copy(alpha = 0.85f)
+
+// --- 黄色马卡龙专用色 ---
+val MacaronYellow = Color(0xFFFFD700)       // 主黄色
+val MacaronYellowLight = Color(0xFFFFE44D)  // 浅黄色
+val MacaronYellowDark = Color(0xFFFFC107)   // 深黄色
+val MacaronGold = Color(0xFFFFD700)         // 金色

@@ -17,6 +17,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
+import kotlin.random.Random
 
 /**
  * 播放页 ViewModel。
@@ -25,8 +26,8 @@ import kotlinx.coroutines.launch
  * - 加载视频列表（分页）
  * - 管理当前播放索引和页面切换
  * - 协调 ExoPlayer 实例池预加载
- * - 点赞状态管理（optimistic update + 回滚）
- * - 文件夹筛选和排序
+ * - 收藏状态管理（optimistic update + 回滚）
+ * - 文件夹筛选和排序（支持乱序）
  *
  * 依赖 [VideoPlayerManager] 和 [PreloadManager] 管理播放器生命周期。
  */
@@ -70,6 +71,9 @@ class PlayerViewModel(application: Application) : AndroidViewModel(application) 
     private val _showSortMenu = MutableStateFlow(false)
     val showSortMenu: StateFlow<Boolean> = _showSortMenu.asStateFlow()
 
+    /** 原始视频列表（用于乱序排序） */
+    private var originalVideos: List<Video> = emptyList()
+
     init {
         initPlayerManager()
         loadSettings()
@@ -112,7 +116,7 @@ class PlayerViewModel(application: Application) : AndroidViewModel(application) 
         }
         viewModelScope.launch {
             settingsDataStore.likedOnlyFlow.collectLatest { likedOnly ->
-                _uiState.value = _uiState.value.copy(likedOnly = likedOnly)
+                _uiState.value = _uiState.value.copy(favoritedOnly = likedOnly)
             }
         }
     }
@@ -126,34 +130,75 @@ class PlayerViewModel(application: Application) : AndroidViewModel(application) 
             try {
                 val api = container.getApiService()
                 val state = _uiState.value
-                val response = api.getVideos(
-                    page = 1,
-                    pageSize = PAGE_SIZE,
-                    folder = state.selectedFolder.ifBlank { null },
-                    sort = state.sortField,
-                    order = state.sortOrder,
-                    likedOnly = state.likedOnly
-                )
-
-                if (response.isSuccess() && response.data != null) {
-                    val videos = response.data.videos
-                    _uiState.value = _uiState.value.copy(
-                        videos = videos,
-                        currentPage = 1,
-                        total = response.data.total,
-                        isLoading = false,
-                        hasMore = videos.size < response.data.total,
-                        currentIndex = if (videos.isNotEmpty()) 0 else -1
+                
+                // 如果是乱序排序，先加载所有视频再随机排序
+                if (state.sortField == "shuffle") {
+                    // 加载第一页
+                    val response = api.getVideos(
+                        page = 1,
+                        pageSize = PAGE_SIZE,
+                        folder = state.selectedFolder.ifBlank { null },
+                        sort = "name", // 先按名称排序加载
+                        order = "asc",
+                        likedOnly = state.favoritedOnly
                     )
-                    // 预加载第一个视频
-                    if (videos.isNotEmpty()) {
-                        onVideoChanged(0)
+
+                    if (response.isSuccess() && response.data != null) {
+                        val videos = response.data.videos
+                        originalVideos = videos
+                        
+                        // 随机排序
+                        val shuffledVideos = videos.shuffled(Random)
+                        
+                        _uiState.value = _uiState.value.copy(
+                            videos = shuffledVideos,
+                            currentPage = 1,
+                            total = response.data.total,
+                            isLoading = false,
+                            hasMore = videos.size < response.data.total,
+                            currentIndex = if (shuffledVideos.isNotEmpty()) 0 else -1
+                        )
+                        // 预加载第一个视频
+                        if (shuffledVideos.isNotEmpty()) {
+                            onVideoChanged(0)
+                        }
+                    } else {
+                        _uiState.value = _uiState.value.copy(
+                            isLoading = false,
+                            error = response.message.ifBlank { "加载视频失败" }
+                        )
                     }
                 } else {
-                    _uiState.value = _uiState.value.copy(
-                        isLoading = false,
-                        error = response.message.ifBlank { "加载视频失败" }
+                    // 正常排序
+                    val response = api.getVideos(
+                        page = 1,
+                        pageSize = PAGE_SIZE,
+                        folder = state.selectedFolder.ifBlank { null },
+                        sort = state.sortField,
+                        order = state.sortOrder,
+                        likedOnly = state.favoritedOnly
                     )
+
+                    if (response.isSuccess() && response.data != null) {
+                        val videos = response.data.videos
+                        _uiState.value = _uiState.value.copy(
+                            videos = videos,
+                            currentPage = 1,
+                            total = response.data.total,
+                            isLoading = false,
+                            hasMore = videos.size < response.data.total,
+                            currentIndex = if (videos.isNotEmpty()) 0 else -1
+                        )
+                        // 预加载第一个视频
+                        if (videos.isNotEmpty()) {
+                            onVideoChanged(0)
+                        }
+                    } else {
+                        _uiState.value = _uiState.value.copy(
+                            isLoading = false,
+                            error = response.message.ifBlank { "加载视频失败" }
+                        )
+                    }
                 }
             } catch (e: ApiException) {
                 Log.e(TAG, "Load videos failed (API)", e)
@@ -185,22 +230,40 @@ class PlayerViewModel(application: Application) : AndroidViewModel(application) 
             try {
                 val api = container.getApiService()
                 val nextPage = state.currentPage + 1
+                
+                // 如果是乱序，继续正常加载但会合并后重新乱序
                 val response = api.getVideos(
                     page = nextPage,
                     pageSize = PAGE_SIZE,
                     folder = state.selectedFolder.ifBlank { null },
-                    sort = state.sortField,
+                    sort = if (state.sortField == "shuffle") "name" else state.sortField,
                     order = state.sortOrder,
-                    likedOnly = state.likedOnly
+                    likedOnly = state.favoritedOnly
                 )
 
                 if (response.isSuccess() && response.data != null) {
-                    _uiState.value = _uiState.value.copy(
-                        videos = state.videos + response.data.videos,
-                        currentPage = nextPage,
-                        isLoadingMore = false,
-                        hasMore = (state.videos.size + response.data.videos.size) < response.data.total
-                    )
+                    val newVideos = response.data.videos
+                    
+                    if (state.sortField == "shuffle") {
+                        // 乱序模式：合并后重新乱序
+                        val allVideos = state.videos + newVideos
+                        originalVideos = allVideos
+                        val shuffledVideos = allVideos.shuffled(Random)
+                        
+                        _uiState.value = _uiState.value.copy(
+                            videos = shuffledVideos,
+                            currentPage = nextPage,
+                            isLoadingMore = false,
+                            hasMore = allVideos.size < response.data.total
+                        )
+                    } else {
+                        _uiState.value = _uiState.value.copy(
+                            videos = state.videos + newVideos,
+                            currentPage = nextPage,
+                            isLoadingMore = false,
+                            hasMore = (state.videos.size + newVideos.size) < response.data.total
+                        )
+                    }
                 } else {
                     _uiState.value = _uiState.value.copy(isLoadingMore = false)
                 }
@@ -238,24 +301,25 @@ class PlayerViewModel(application: Application) : AndroidViewModel(application) 
         playerManager?.setCurrent(video.id)
         preloadManager?.preload(videos, index)
 
-        // 更新点赞状态
+        // 更新收藏状态
         _uiState.value = _uiState.value.copy(
             currentVideo = video,
-            isLiked = video.liked
+            isFavorited = video.liked
         )
     }
 
     /**
-     * 切换点赞（optimistic update）。
+     * 切换收藏（optimistic update）。
      *
      * UI 立即翻转状态 → 调用 API → 失败则回滚。
+     * 已移除"点赞"功能，仅保留"收藏"。
      */
-    fun toggleLike() {
+    fun toggleFavorite() {
         val video = _uiState.value.currentVideo ?: return
-        val previousLiked = _uiState.value.isLiked
+        val previousFavorited = _uiState.value.isFavorited
 
         // Optimistic update
-        _uiState.value = _uiState.value.copy(isLiked = !previousLiked)
+        _uiState.value = _uiState.value.copy(isFavorited = !previousFavorited)
 
         viewModelScope.launch {
             try {
@@ -269,31 +333,31 @@ class PlayerViewModel(application: Application) : AndroidViewModel(application) 
                     _uiState.value = _uiState.value.copy(
                         videos = updatedVideos,
                         currentVideo = updatedVideos.find { it.id == video.id },
-                        isLiked = response.data.liked
+                        isFavorited = response.data.liked
                     )
-                    Log.d(TAG, "Like toggled: video ${video.id} → ${response.data.liked}")
+                    Log.d(TAG, "Favorite toggled: video ${video.id} → ${response.data.liked}")
                 } else {
                     // 回滚
-                    _uiState.value = _uiState.value.copy(isLiked = previousLiked)
-                    _uiState.value = _uiState.value.copy(error = "点赞操作失败")
+                    _uiState.value = _uiState.value.copy(isFavorited = previousFavorited)
+                    _uiState.value = _uiState.value.copy(error = "收藏操作失败")
                 }
             } catch (e: Exception) {
-                Log.e(TAG, "Toggle like failed", e)
+                Log.e(TAG, "Toggle favorite failed", e)
                 // 回滚
                 _uiState.value = _uiState.value.copy(
-                    isLiked = previousLiked,
-                    error = "网络错误，点赞失败"
+                    isFavorited = previousFavorited,
+                    error = "网络错误，收藏失败"
                 )
             }
         }
     }
 
     /**
-     * 双击点赞（直接设为已点赞）。
+     * 双击收藏（直接设为已收藏）。
      */
-    fun doubleTapLike() {
-        if (!_uiState.value.isLiked) {
-            toggleLike()
+    fun doubleTapFavorite() {
+        if (!_uiState.value.isFavorited) {
+            toggleFavorite()
         }
     }
 
@@ -313,6 +377,14 @@ class PlayerViewModel(application: Application) : AndroidViewModel(application) 
     fun updateProgress(positionMs: Long, durationMs: Long) {
         _currentPosition.value = positionMs
         _totalDuration.value = durationMs
+    }
+
+    /**
+     * 暂停当前播放（用于后台暂停）。
+     */
+    fun pauseCurrentPlayer() {
+        val video = _uiState.value.currentVideo ?: return
+        playerManager?.getPlayer(video.id)?.pause()
     }
 
     /**
@@ -358,13 +430,13 @@ class PlayerViewModel(application: Application) : AndroidViewModel(application) 
     }
 
     /**
-     * 切换仅点赞模式。
+     * 切换仅收藏模式。
      */
-    fun toggleLikedOnly() {
+    fun toggleFavoritedOnly() {
         viewModelScope.launch {
-            val newValue = !_uiState.value.likedOnly
+            val newValue = !_uiState.value.favoritedOnly
             settingsDataStore.setLikedOnly(newValue)
-            _uiState.value = _uiState.value.copy(likedOnly = newValue)
+            _uiState.value = _uiState.value.copy(favoritedOnly = newValue)
             loadVideos()
         }
     }
@@ -407,8 +479,8 @@ data class PlayerUiState(
     val currentIndex: Int = -1,
     /** 当前视频 */
     val currentVideo: Video? = null,
-    /** 是否点赞 */
-    val isLiked: Boolean = false,
+    /** 是否收藏 */
+    val isFavorited: Boolean = false,
     /** 总数 */
     val total: Int = 0,
     /** 当前页码 */
@@ -422,11 +494,11 @@ data class PlayerUiState(
     /** 选中文件夹 */
     val selectedFolder: String = "",
     /** 排序字段 */
-    val sortField: String = "mod_time",
+    val sortField: String = "name",  // 默认按名称排序（已移除 mod_time）
     /** 排序方向 */
-    val sortOrder: String = "desc",
-    /** 仅点赞 */
-    val likedOnly: Boolean = false,
+    val sortOrder: String = "asc",
+    /** 仅收藏 */
+    val favoritedOnly: Boolean = false,
     /** 错误信息 */
     val error: String? = null,
     /** 是否显示暂停图标 */
