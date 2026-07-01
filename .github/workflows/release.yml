@@ -88,24 +88,25 @@ jobs:
         run: mkdir -p android/keystore
 
       - name: Decode release keystore (from secrets)
-        if: ${{ secrets.NASEE_KEYSTORE_BASE64 != '' }}
+        env:
+          KEYSTORE_BASE64: ${{ secrets.NASEE_KEYSTORE_BASE64 }}
         run: |
-          echo "${{ secrets.NASEE_KEYSTORE_BASE64 }}" | base64 -d > android/keystore/nasee-release.jks
-
-      - name: Auto-generate keystore (if no secret configured)
-        if: ${{ secrets.NASEE_KEYSTORE_BASE64 == '' }}
-        run: |
-          echo "⚠️  No NASEE_KEYSTORE_BASE64 secret found — auto-generating a release keystore."
-          echo "   For future upgrades, download this keystore and add it as a secret."
-          keytool -genkeypair \
-            -alias nasee \
-            -keyalg RSA \
-            -keysize 2048 \
-            -validity 10000 \
-            -keystore android/keystore/nasee-release.jks \
-            -storepass nasee123 \
-            -keypass nasee123 \
-            -dname "CN=NASee, OU=NASee, O=NASee, L=NA, ST=NA, C=CN"
+          if [ -n "$KEYSTORE_BASE64" ]; then
+            echo "$KEYSTORE_BASE64" | base64 -d > android/keystore/nasee-release.jks
+            echo "Keystore decoded from secret."
+          else
+            echo "No keystore secret found — auto-generating a release keystore."
+            echo "For future upgrades, download this keystore and add it as a secret."
+            keytool -genkeypair \
+              -alias nasee \
+              -keyalg RSA \
+              -keysize 2048 \
+              -validity 10000 \
+              -keystore android/keystore/nasee-release.jks \
+              -storepass nasee123 \
+              -keypass nasee123 \
+              -dname "CN=NASee, OU=NASee, O=NASee, L=NA, ST=NA, C=CN"
+          fi
 
       - name: Build release APK
         working-directory: android
@@ -140,7 +141,9 @@ jobs:
           retention-days: 90
 
       - name: Upload keystore artifact (for future upgrades)
-        if: ${{ secrets.NASEE_KEYSTORE_BASE64 == '' }}
+        env:
+          KEYSTORE_BASE64: ${{ secrets.NASEE_KEYSTORE_BASE64 }}
+        if: env.KEYSTORE_BASE64 == ''
         uses: actions/upload-artifact@v4
         with:
           name: nasee-keystore
