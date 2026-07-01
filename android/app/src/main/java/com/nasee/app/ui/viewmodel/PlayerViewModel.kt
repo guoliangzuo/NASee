@@ -115,8 +115,8 @@ class PlayerViewModel(application: Application) : AndroidViewModel(application) 
             }
         }
         viewModelScope.launch {
-            settingsDataStore.likedOnlyFlow.collectLatest { likedOnly ->
-                _uiState.value = _uiState.value.copy(favoritedOnly = likedOnly)
+            settingsDataStore.favoritedOnlyFlow.collectLatest { favoritedOnly ->
+                _uiState.value = _uiState.value.copy(favoritedOnly = favoritedOnly)
             }
         }
     }
@@ -435,7 +435,7 @@ class PlayerViewModel(application: Application) : AndroidViewModel(application) 
     fun toggleFavoritedOnly() {
         viewModelScope.launch {
             val newValue = !_uiState.value.favoritedOnly
-            settingsDataStore.setLikedOnly(newValue)
+            settingsDataStore.setFavoritedOnly(newValue)
             _uiState.value = _uiState.value.copy(favoritedOnly = newValue)
             loadVideos()
         }

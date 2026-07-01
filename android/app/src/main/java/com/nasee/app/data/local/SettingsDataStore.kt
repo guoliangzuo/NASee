@@ -32,13 +32,11 @@ class SettingsDataStore(private val context: Context) {
         val SORT_ORDER = stringPreferencesKey("sort_order")
         // 上次选中的文件夹
         val SELECTED_FOLDER = stringPreferencesKey("selected_folder")
-        // 仅点赞模式
-        val LIKED_ONLY = booleanPreferencesKey("liked_only")
-        // 使用外网地址
-        val USE_EXTERNAL = booleanPreferencesKey("use_external")
+        // 仅收藏模式
+        val FAVORITED_ONLY = booleanPreferencesKey("favorited_only")
 
         // 默认值
-        const val DEFAULT_SORT_FIELD = "mod_time"
+        const val DEFAULT_SORT_FIELD = "name"
         const val DEFAULT_SORT_ORDER = "desc"
         const val DEFAULT_FOLDER = ""
     }
@@ -58,14 +56,9 @@ class SettingsDataStore(private val context: Context) {
         prefs[SELECTED_FOLDER] ?: DEFAULT_FOLDER
     }
 
-    /** 仅点赞模式 Flow */
-    val likedOnlyFlow: Flow<Boolean> = context.dataStore.data.map { prefs ->
-        prefs[LIKED_ONLY] ?: false
-    }
-
-    /** 使用外网地址 Flow */
-    val useExternalFlow: Flow<Boolean> = context.dataStore.data.map { prefs ->
-        prefs[USE_EXTERNAL] ?: false
+    /** 仅收藏模式 Flow */
+    val favoritedOnlyFlow: Flow<Boolean> = context.dataStore.data.map { prefs ->
+        prefs[FAVORITED_ONLY] ?: false
     }
 
     /** 设置排序字段 */
@@ -83,13 +76,8 @@ class SettingsDataStore(private val context: Context) {
         context.dataStore.edit { it[SELECTED_FOLDER] = folder }
     }
 
-    /** 设置仅点赞模式 */
-    suspend fun setLikedOnly(likedOnly: Boolean) {
-        context.dataStore.edit { it[LIKED_ONLY] = likedOnly }
-    }
-
-    /** 设置使用外网地址 */
-    suspend fun setUseExternal(useExternal: Boolean) {
-        context.dataStore.edit { it[USE_EXTERNAL] = useExternal }
+    /** 设置仅收藏模式 */
+    suspend fun setFavoritedOnly(favoritedOnly: Boolean) {
+        context.dataStore.edit { it[FAVORITED_ONLY] = favoritedOnly }
     }
 }
