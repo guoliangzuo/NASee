@@ -8,10 +8,12 @@ import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
@@ -20,6 +22,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
+import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.media3.common.Player
 import androidx.media3.common.util.UnstableApi
 import com.nasee.app.NASeeApplication
@@ -57,9 +60,7 @@ fun PlayerScreen(
     onDisconnect: () -> Unit
 ) {
     val context = LocalContext.current
-    val viewModel: PlayerViewModel = viewModel {
-        PlayerViewModel(context.applicationContext as NASeeApplication)
-    }
+    val viewModel: PlayerViewModel = viewModel()
     val uiState by viewModel.uiState.collectAsState()
     val folders by viewModel.folders.collectAsState()
     val showFolderSheet by viewModel.showFolderSheet.collectAsState()
@@ -70,7 +71,7 @@ fun PlayerScreen(
 
     // 生命周期监听：暂停播放
     val lifecycleOwner = LocalLifecycleOwner.current
-    LaunchedEffect(lifecycleOwner) {
+    DisposableEffect(lifecycleOwner) {
         val observer = LifecycleEventObserver { _, event ->
             when (event) {
                 Lifecycle.Event.ON_PAUSE -> {
@@ -84,6 +85,9 @@ fun PlayerScreen(
             }
         }
         lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose {
+            lifecycleOwner.lifecycle.removeObserver(observer)
+        }
     }
 
     // 初始加载
