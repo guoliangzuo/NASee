@@ -3,6 +3,7 @@ package com.nasee.app.ui.screens
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.material3.SnackbarHost
@@ -19,6 +20,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.unit.dp
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
@@ -32,6 +34,7 @@ import com.nasee.app.ui.components.SideActionRail
 import com.nasee.app.ui.components.SortMenu
 import com.nasee.app.ui.components.VideoInfoBar
 import com.nasee.app.ui.components.VideoPager
+import com.nasee.app.ui.theme.liquidGlassBottomBar
 import com.nasee.app.ui.viewmodel.PlayerViewModel
 import kotlinx.coroutines.delay
 
@@ -151,7 +154,7 @@ fun PlayerScreen(
             modifier = Modifier.fillMaxSize()
         )
 
-        // 2. 底部渐变遮罩
+        // 2. 底部渐变遮罩（液态玻璃效果）
         Box(
             modifier = Modifier
                 .fillMaxSize()
@@ -161,23 +164,29 @@ fun PlayerScreen(
                             Color.Transparent,
                             Color.Transparent,
                             Color.Transparent,
-                            Color.Black.copy(alpha = 0.3f),
-                            Color.Black.copy(alpha = 0.7f)
+                            Color.Black.copy(alpha = 0.2f),
+                            Color.Black.copy(alpha = 0.6f)
                         )
                     )
                 )
         )
 
-        // 3. 底部信息栏
+        // 3. 底部信息栏 + 进度条（液态玻璃容器）
         uiState.currentVideo?.let { video ->
-            VideoInfoBar(
-                title = video.title,
-                folder = video.folder,
-                modifier = Modifier.align(Alignment.BottomStart)
-            )
+            Box(
+                modifier = Modifier
+                    .align(Alignment.BottomStart)
+                    .fillMaxWidth()
+            ) {
+                VideoInfoBar(
+                    title = video.title,
+                    folder = video.folder,
+                    modifier = Modifier.fillMaxWidth()
+                )
+            }
         }
 
-        // 4. 右侧操作栏
+        // 4. 右侧操作栏（已使用玻璃态按钮）
         SideActionRail(
             isFavorited = uiState.isFavorited,
             favoritedCount = uiState.total,
@@ -191,14 +200,21 @@ fun PlayerScreen(
                 .statusBarsPadding()
         )
 
-        // 5. 进度条
-        ProgressBar(
-            currentPosition = currentPosition,
-            duration = totalDuration,
-            visible = true,
-            onSeek = { pos -> viewModel.seekTo(pos) },
-            modifier = Modifier.align(Alignment.BottomStart)
-        )
+        // 5. 进度条（液态玻璃背景）
+        Box(
+            modifier = Modifier
+                .align(Alignment.BottomStart)
+                .fillMaxWidth()
+                .padding(bottom = 8.dp)
+        ) {
+            ProgressBar(
+                currentPosition = currentPosition,
+                duration = totalDuration,
+                visible = true,
+                onSeek = { pos -> viewModel.seekTo(pos) },
+                modifier = Modifier.fillMaxWidth()
+            )
+        }
 
         // 6. Snackbar
         SnackbarHost(

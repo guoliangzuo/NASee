@@ -23,6 +23,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.nasee.app.ui.theme.LiquidGlassDropdown
 import com.nasee.app.ui.theme.MacaronYellow
 
 /**
@@ -51,16 +52,14 @@ fun SortMenu(
         SortOption("shuffle", "乱序", Icons.Default.Shuffle, isShuffle = true)
     )
 
-    DropdownMenu(
-        expanded = true,
-        onDismissRequest = onDismiss,
-        modifier = Modifier.width(200.dp)
+    LiquidGlassDropdown(
+        modifier = Modifier.width(220.dp)
     ) {
         Text(
             text = "排序方式",
             style = MaterialTheme.typography.labelMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
+            color = Color.White.copy(alpha = 0.7f),
+            modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp)
         )
 
         sortOptions.forEach { option ->
@@ -70,7 +69,7 @@ fun SortMenu(
                     text = {
                         Text(
                             text = option.label,
-                            color = if (currentSort == option.field) MacaronYellow else MaterialTheme.colorScheme.onSurface,
+                            color = if (currentSort == option.field) MacaronYellow else Color.White,
                             fontWeight = if (currentSort == option.field) FontWeight.SemiBold else FontWeight.Normal
                         )
                     },
@@ -78,7 +77,7 @@ fun SortMenu(
                         Icon(
                             imageVector = option.icon,
                             contentDescription = null,
-                            tint = if (currentSort == option.field) MacaronYellow else MaterialTheme.colorScheme.onSurfaceVariant
+                            tint = if (currentSort == option.field) MacaronYellow else Color.White.copy(alpha = 0.7f)
                         )
                     },
                     onClick = { onSortSelected(option.field, "asc") }
@@ -92,7 +91,7 @@ fun SortMenu(
                         Column {
                             Text(
                                 text = option.label,
-                                color = if (isSelected) MacaronYellow else MaterialTheme.colorScheme.onSurface,
+                                color = if (isSelected) MacaronYellow else Color.White,
                                 fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Normal
                             )
                             if (isSelected) {
@@ -108,7 +107,7 @@ fun SortMenu(
                         Icon(
                             imageVector = option.icon,
                             contentDescription = null,
-                            tint = if (isSelected) MacaronYellow else MaterialTheme.colorScheme.onSurfaceVariant
+                            tint = if (isSelected) MacaronYellow else Color.White.copy(alpha = 0.7f)
                         )
                     },
                     trailingIcon = {

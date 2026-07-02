@@ -25,15 +25,15 @@ import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Router
 import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material.icons.filled.VisibilityOff
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextFieldDefaults
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -57,6 +57,7 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.nasee.app.NASeeApplication
 import com.nasee.app.ui.components.LiquidGlassCard
+import com.nasee.app.ui.theme.LiquidGlassButton
 import com.nasee.app.ui.theme.MacaronYellow
 import com.nasee.app.ui.theme.MacaronYellowLight
 import com.nasee.app.ui.viewmodel.ConnectionViewModel
@@ -238,26 +239,22 @@ fun ConnectionScreen(
 
                     Spacer(modifier = Modifier.height(8.dp))
 
-                    // 测试连接按钮
-                    Button(
+                    // 测试连接按钮（液态玻璃按钮）
+                    LiquidGlassButton(
                         onClick = {
                             keyboard?.hide()
                             viewModel.testConnection()
                         },
-                        enabled = !uiState.isTesting,
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = MacaronYellow
-                        ),
                         modifier = Modifier.fillMaxWidth()
                     ) {
                         if (uiState.isTesting) {
                             CircularProgressIndicator(
                                 modifier = Modifier.size(20.dp),
-                                color = Color.Black,
+                                color = MacaronYellow,
                                 strokeWidth = 2.dp
                             )
                         } else {
-                            Text("测试连接", color = Color.Black)
+                            Text("测试连接", color = Color.White)
                         }
                     }
 

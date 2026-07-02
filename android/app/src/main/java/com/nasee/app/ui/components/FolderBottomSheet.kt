@@ -37,6 +37,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.nasee.app.data.model.FolderNode
 import com.nasee.app.ui.theme.GlassWhite
+import com.nasee.app.ui.theme.LiquidGlassBottomSheet
 import com.nasee.app.ui.theme.NASeePrimary
 
 /**
@@ -64,46 +65,51 @@ fun FolderBottomSheet(
     ModalBottomSheet(
         onDismissRequest = onDismiss,
         sheetState = sheetState,
-        containerColor = MaterialTheme.colorScheme.surface,
-        dragHandle = null
+        containerColor = Color.Transparent,
+        dragHandle = null,
+        scrimColor = Color.Black.copy(alpha = 0.5f)
     ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp)
+        LiquidGlassBottomSheet(
+            modifier = Modifier.fillMaxWidth()
         ) {
-            Text(
-                text = "选择文件夹",
-                style = MaterialTheme.typography.titleLarge,
-                color = MaterialTheme.colorScheme.onSurface,
-                modifier = Modifier.padding(bottom = 16.dp)
-            )
-
-            LazyColumn(
-                modifier = Modifier.fillMaxWidth(),
-                verticalArrangement = Arrangement.spacedBy(4.dp)
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(16.dp)
             ) {
-                // 全部视频
-                item {
-                    FolderItem(
-                        name = "全部视频",
-                        path = "",
-                        count = folders.sumOf { it.count },
-                        isSelected = selectedFolder.isBlank(),
-                        onClick = { onSelect("") }
-                    )
-                }
+                Text(
+                    text = "选择文件夹",
+                    style = MaterialTheme.typography.titleLarge,
+                    color = Color.White,
+                    modifier = Modifier.padding(bottom = 16.dp)
+                )
 
-                // 递归渲染文件夹树
-                folders.forEach { node ->
+                LazyColumn(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalArrangement = Arrangement.spacedBy(4.dp)
+                ) {
+                    // 全部视频
                     item {
-                        FolderTreeItem(
-                            node = node,
-                            depth = 0,
-                            selectedFolder = selectedFolder,
-                            expandedMap = expandedMap,
-                            onSelect = onSelect
+                        FolderItem(
+                            name = "全部视频",
+                            path = "",
+                            count = folders.sumOf { it.count },
+                            isSelected = selectedFolder.isBlank(),
+                            onClick = { onSelect("") }
                         )
+                    }
+
+                    // 递归渲染文件夹树
+                    folders.forEach { node ->
+                        item {
+                            FolderTreeItem(
+                                node = node,
+                                depth = 0,
+                                selectedFolder = selectedFolder,
+                                expandedMap = expandedMap,
+                                onSelect = onSelect
+                            )
+                        }
                     }
                 }
             }
@@ -140,7 +146,7 @@ private fun FolderTreeItem(
                 Icon(
                     imageVector = if (isExpanded) Icons.Default.ExpandMore else Icons.Default.ChevronRight,
                     contentDescription = if (isExpanded) "折叠" else "展开",
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                    tint = Color.White.copy(alpha = 0.7f),
                     modifier = Modifier
                         .size(24.dp)
                         .clickable { expandedMap[node.path] = !isExpanded }
@@ -155,7 +161,7 @@ private fun FolderTreeItem(
             Icon(
                 imageVector = Icons.Default.Folder,
                 contentDescription = null,
-                tint = if (isSelected) NASeePrimary else MaterialTheme.colorScheme.onSurfaceVariant,
+                tint = if (isSelected) NASeePrimary else Color.White.copy(alpha = 0.7f),
                 modifier = Modifier.size(20.dp)
             )
 
@@ -165,7 +171,7 @@ private fun FolderTreeItem(
             Text(
                 text = node.name,
                 style = MaterialTheme.typography.bodyLarge,
-                color = if (isSelected) NASeePrimary else MaterialTheme.colorScheme.onSurface,
+                color = if (isSelected) NASeePrimary else Color.White,
                 fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Normal,
                 modifier = Modifier.weight(1f)
             )
@@ -174,7 +180,7 @@ private fun FolderTreeItem(
             Text(
                 text = "${node.count}",
                 style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
+                color = Color.White.copy(alpha = 0.6f)
             )
         }
 
@@ -214,21 +220,21 @@ private fun FolderItem(
         Icon(
             imageVector = Icons.Outlined.VideoLibrary,
             contentDescription = null,
-            tint = if (isSelected) NASeePrimary else MaterialTheme.colorScheme.onSurfaceVariant,
+            tint = if (isSelected) NASeePrimary else Color.White.copy(alpha = 0.7f),
             modifier = Modifier.size(20.dp)
         )
         Spacer(modifier = Modifier.width(12.dp))
         Text(
             text = name,
             style = MaterialTheme.typography.bodyLarge,
-            color = if (isSelected) NASeePrimary else MaterialTheme.colorScheme.onSurface,
+            color = if (isSelected) NASeePrimary else Color.White,
             fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Normal,
             modifier = Modifier.weight(1f)
         )
         Text(
             text = "$count",
             style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
+            color = Color.White.copy(alpha = 0.6f)
         )
     }
 }
